@@ -10,26 +10,21 @@ import java.util.Arrays;
 
 public class Mapper {
 
-	public static void main(String args[])
-			throws ClassNotFoundException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
-			InstantiationException, NoSuchMethodException, RuntimeException {
+	public static void main(String args[]) throws ClassNotFoundException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
 		String mapperUDF = args[0];
 		Class<?> mapperUDFClass = Class.forName(mapperUDF);
 
-		// System.out.println(Arrays.toString(args));
 		String fileName = "public/sample.txt";
 		String contentsFile = readFile(fileName);
+		
 		String[] mainArgs = new String[1];
-		mainArgs[0]=contentsFile;
-	    System.out.format("invoking %s.main()%n", c.getName());
-	    main.invoke(null, (Object)mainArgs);
-		Method methodcall1 = mapperUDFClass.getDeclaredMethod("map", (Object)mainArgs);
-
-// invokes the method at runtime 
-		methodcall1.invoke(mapperUDFClass.newInstance(), 19);
-//		
-//		String fileContents=map("public/sample.txt", contentsFile);
-//		writeToIntermediateFile(fileContents);
+		mainArgs[0] = contentsFile;
+		
+		Method mapMethod = mapperUDFClass.getDeclaredMethod("map", String.class, String.class);
+	 
+	    String result = (String) mapMethod.invoke(null, fileName, contentsFile);
+		
+		writeToIntermediateFile(result);
 	}
 
 	private static void writeToIntermediateFile(String fileContents) {

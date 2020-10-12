@@ -18,7 +18,7 @@ public class MasterLibrary {
 		ProcessBuilder processBuilder = new ProcessBuilder();
 		System.out.println(System.getProperty("user.dir")+"/target/mr-0.0.1-SNAPSHOT.jar");
         processBuilder.command("java", "-cp", System.getProperty("user.dir")+"/target/mr-0.0.1-SNAPSHOT.jar", "org.systemsfords.p1.mr.Mapper", mapperUDF);
-
+        processBuilder.redirectErrorStream(true);
         try {
 
             Process process = processBuilder.start();
@@ -27,13 +27,15 @@ public class MasterLibrary {
                     new BufferedReader(new InputStreamReader(process.getInputStream()));
 
             String line;
+            String path = "";
             while ((line = reader.readLine()) != null) {
                 System.out.println(line);
+                path = line;
             }
 
             int exitCode = process.waitFor();
             System.out.println("\nExited with error code : " + exitCode);
-
+            System.out.println(path);
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {

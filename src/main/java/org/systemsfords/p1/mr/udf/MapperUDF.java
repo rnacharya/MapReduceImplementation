@@ -1,11 +1,10 @@
 package org.systemsfords.p1.mr.udf;
 
-import java.io.FileWriter;
-import java.io.PrintWriter;
+import org.systemsfords.p1.mr.Mapper;
 
-public class MapperUDF {
-	
-	public static String map(String key, String value) {
+public class MapperUDF implements Mapper{
+	public String map(String key, String value) {
+
 		String processedContents = value.replaceAll("\\p{Punct}", " ");
 		String[] terms = processedContents.split("\\s+");
 		StringBuilder fileContents = new StringBuilder();
@@ -13,6 +12,7 @@ public class MapperUDF {
 		for (String term : terms) {
 			fileContents.append(term + ", " + 1 + "\n");
 		}
+		//System.out.println(fileContents.toString());
 		return fileContents.toString();
 	}
 	

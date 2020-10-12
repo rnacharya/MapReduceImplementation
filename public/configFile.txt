@@ -1,0 +1,5 @@
+inputFile=/public/tokenization-input-part-B.txt
+outputFilePath=/public/
+N=1
+mapperUDF=org.systemsfords.p1.mr.udf.MapperUDF
+reducerUDF=org.systemsfords.p1.mr.udf.ReducerUDF

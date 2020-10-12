@@ -18,8 +18,7 @@ public class MapperLibrary {
 		String mapperUDF = args[0];
 		String fileName = args[1];
 		Class<?> mapperUDFClass = Class.forName(mapperUDF);
-		System.out.println("Mapper class name: " + mapperUDF);
-		
+
 		String contentsFile = readFile(fileName);
 		Method mapMethod = mapperUDFClass.getDeclaredMethod("map", String.class, String.class);
 		System.out.println(mapMethod);

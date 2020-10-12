@@ -19,7 +19,7 @@ public class ReducerLibrary {
 		String reducerUDF = args[0];
 		String intermediateFilePath = args[1];
 		String outputFilePath = args[2];
-		System.out.println("ReducerUDF className: " + reducerUDF);
+		//System.out.println("ReducerUDF className: " + reducerUDF);
 		Class<?> reducerUDFClass = Class.forName(reducerUDF);
 
 		String contentsFile = readFile(intermediateFilePath);
@@ -77,5 +77,6 @@ public class ReducerLibrary {
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
+		System.out.println("Successfully wrote to output file: "+outputFilePath);
 	}
 }

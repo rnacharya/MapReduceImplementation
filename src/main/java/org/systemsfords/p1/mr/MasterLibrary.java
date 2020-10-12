@@ -8,38 +8,30 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class MasterLibrary {
-	String mapperUDF;
-	String reducerUDF;
-	String intermediateFilePath;
-	String inputFilePath;
-	String outputFilePath;
-	int noOfProcesses;
 
-	public MasterLibrary(String mapperUDF, String reducerUDF, String outputFilePath, String inputFilePath, int noOfProcesses) {
-		this.mapperUDF = mapperUDF;
-		this.reducerUDF = reducerUDF;
-		this.inputFilePath = System.getProperty("user.dir") + inputFilePath;
-		this.outputFilePath = System.getProperty("user.dir") + outputFilePath;
-		this.noOfProcesses = noOfProcesses;
-	}
-	
-	public static void main(String args[]) {
-//		String configFile = System.getProperty("user.dir") + args[0];
+	String intermediateFilePath;
+
+	String outputFilePath;
+
+	public static void main(String[] args) throws IOException {
+
 		String configFile = System.getProperty("user.dir") + "/public/configFile.txt";
 		Map<String, String> configMap = readConfigFile(configFile);
-		String outputFile = configMap.get("outputFilePath") + "outputFile.txt";
-		MasterLibrary masLib = new MasterLibrary(configMap.get("mapperUDF"), 
-				configMap.get("reducerUDF"), outputFile, configMap.get("inputFile"), Integer.parseInt(configMap.get("N")));
-		masLib.callMapperLibrary();
-		masLib.callReducerLibrary();
+		String outputFile = System.getProperty("user.dir") + configMap.get("outputFilePath") + "outputFile.txt";
+		String mapperUDF = configMap.get("mapperUDF");
+		String reducerUDF = configMap.get("reducerUDF");
+		String inputFilePath = System.getProperty("user.dir") + configMap.get("inputFile");
+		int noOfProcesses = Integer.parseInt(configMap.get("N"));
+		String intermediateFilePath = callMapperLibrary(mapperUDF, inputFilePath);
+		callReducerLibrary(reducerUDF, intermediateFilePath, outputFile);
 	}
 
-	public void callMapperLibrary() {
+	public static String callMapperLibrary(String mapperUDF, String inputFilePath) {
 		ProcessBuilder processBuilder = new ProcessBuilder();
 		processBuilder.command("java", "-cp", System.getProperty("user.dir") + "/target/mr-0.0.1-SNAPSHOT.jar",
-				"org.systemsfords.p1.mr.MapperLibrary", mapperUDF, this.inputFilePath);
+				"org.systemsfords.p1.mr.MapperLibrary", mapperUDF, inputFilePath);
 		processBuilder.redirectErrorStream(true);
-
+		String intermediateFilePath = null;
 		try {
 
 			Process process = processBuilder.start();
@@ -47,8 +39,9 @@ public class MasterLibrary {
 			BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
 
 			String line;
+
 			while ((line = reader.readLine()) != null) {
-				System.out.println("Output of process: "+line);
+				// System.out.println("Output of process: "+line);
 				intermediateFilePath = line;
 			}
 
@@ -59,9 +52,10 @@ public class MasterLibrary {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
+		return intermediateFilePath;
 	}
 
-	public void callReducerLibrary() {
+	public static void callReducerLibrary(String reducerUDF, String intermediateFilePath, String outputFilePath) {
 		ProcessBuilder processBuilder = new ProcessBuilder();
 		processBuilder.command("java", "-cp", System.getProperty("user.dir") + "/target/mr-0.0.1-SNAPSHOT.jar",
 				"org.systemsfords.p1.mr.ReducerLibrary", reducerUDF, intermediateFilePath, outputFilePath);
@@ -85,9 +79,9 @@ public class MasterLibrary {
 			e.printStackTrace();
 		}
 	}
-	
-	public static Map<String,String> readConfigFile(String fileName) {
-		Map<String,String> config = new HashMap<String, String>();
+
+	public static Map<String, String> readConfigFile(String fileName) {
+		Map<String, String> config = new HashMap<String, String>();
 		try {
 			FileReader fr = new FileReader(fileName);
 			BufferedReader br = new BufferedReader(fr);

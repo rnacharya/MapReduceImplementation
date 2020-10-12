@@ -17,9 +17,6 @@ public class Mapper {
 		String fileName = "public/sample.txt";
 		String contentsFile = readFile(fileName);
 		
-		String[] mainArgs = new String[1];
-		mainArgs[0] = contentsFile;
-		
 		Method mapMethod = mapperUDFClass.getDeclaredMethod("map", String.class, String.class);
 	 
 	    String result = (String) mapMethod.invoke(null, fileName, contentsFile);
@@ -33,7 +30,6 @@ public class Mapper {
 			PrintWriter writer = new PrintWriter(new FileWriter("intermediateFile.txt", false));
 			writer.println(fileContents);
 			writer.close();
-			System.out.println("intermediateFile.txt");
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}

@@ -15,6 +15,7 @@ public class MasterLibrary {
 
 	public static void main(String[] args) throws IOException {
 
+		//Reading the inputs from the config file
 		String configFile = System.getProperty("user.dir") + "/public/configFile.txt";
 		Map<String, String> configMap = readConfigFile(configFile);
 		String outputFile = System.getProperty("user.dir") + configMap.get("outputFilePath") + "outputFile.txt";
@@ -22,6 +23,8 @@ public class MasterLibrary {
 		String reducerUDF = configMap.get("reducerUDF");
 		String inputFilePath = System.getProperty("user.dir") + configMap.get("inputFile");
 		int noOfProcesses = Integer.parseInt(configMap.get("N"));
+		
+		// Calling the mapper process
 		String intermediateFilePath = callMapperLibrary(mapperUDF, inputFilePath);
 		callReducerLibrary(reducerUDF, intermediateFilePath, outputFile);
 	}

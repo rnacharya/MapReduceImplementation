@@ -4,9 +4,7 @@ import org.systemsfords.p1.mr.Mapper;
 
 public class MapperUDF implements Mapper{
 	public String map(String key, String value) {
-		String processedContents = value.toLowerCase();
-		processedContents = processedContents.replaceAll("\\p{Punct}", " ");
-		String[] terms = processedContents.split("\\s+");
+		String[] terms = value.split("\\s+");
 		StringBuilder fileContents = new StringBuilder();
 
 		for (String term : terms) {

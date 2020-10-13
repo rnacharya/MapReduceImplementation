@@ -21,5 +21,6 @@ dic_f2.pop('project')
 for i in dic_f2:
     if i in dic_f1:
         if not dic_f2[i]==dic_f1[i]:
-            break
+            print("Not equal")
+        break
 print("The output file and the mapreduce output matches")

@@ -1,6 +1,7 @@
 package org.systemsfords.p1.mr;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -22,15 +23,21 @@ public class MasterLibrary {
 	public static class MapperCallable implements Callable<String> {
 		String mapperUDF;
 		String inputFilePath;
+		int startOffset;
+		int endOffset;
+		int N;
 
-		public MapperCallable(String mapperUDF, String inputFilePath) {
+		public MapperCallable(String mapperUDF, String inputFilePath, int startOffset, int endOffset, int N) {
 			this.mapperUDF = mapperUDF;
 			this.inputFilePath = inputFilePath;
+			this.startOffset = startOffset;
+			this.endOffset = endOffset;
+			this.N = N;
 		}
 
 		@Override
 		public String call() throws Exception {
-			return callMapperLibrary(mapperUDF, inputFilePath);
+			return callMapperLibrary(mapperUDF, inputFilePath, startOffset, endOffset, N);
 		}
 	}
 
@@ -64,21 +71,22 @@ public class MasterLibrary {
 		int noOfProcesses = Integer.parseInt(configMap.get("N"));
 
 		String intermediateFilePath = callMapperLibraryMultipleThreads(mapperUDF, inputFilePath, noOfProcesses);
-		
+
 		callReducerLibraryMultipleThreads(reducerUDF, intermediateFilePath, outputFile, noOfProcesses);
-		
-		
-		//callReducerLibrary(reducerUDF, intermediateFilePath1, outputFile);
+
+		// callReducerLibrary(reducerUDF, intermediateFilePath1, outputFile);
 	}
 
-	private static void callReducerLibraryMultipleThreads(String reducerUDF, String intermediateFilePath, String outputFile, int noOfProcesses) {
+	private static void callReducerLibraryMultipleThreads(String reducerUDF, String intermediateFilePath,
+			String outputFile, int noOfProcesses) {
 		ExecutorService executorService = Executors.newFixedThreadPool(1);
 		List<Future<String>> listOfFutures = new ArrayList<Future<String>>();
 		for (int i = 0; i < 1; i++) {
-			Future<String> future = executorService.submit(new ReducerCallable(reducerUDF, intermediateFilePath, outputFile));
+			Future<String> future = executorService
+					.submit(new ReducerCallable(reducerUDF, intermediateFilePath, outputFile));
 			listOfFutures.add(future);
 		}
-		
+
 		try {
 			for (Future<String> future : listOfFutures) {
 				future.get();
@@ -91,10 +99,21 @@ public class MasterLibrary {
 	}
 
 	private static String callMapperLibraryMultipleThreads(String mapperUDF, String inputFilePath, int noOfProcesses) {
+		/*
+		 * int startOffset = Integer.parseInt(args[2]); int endOffset =
+		 * Integer.parseInt(args[3]); int N = Integer.parseInt(args[4]);
+		 */
+		File f = new File(inputFilePath);
+		int fileSize = (int) f.length();
+		int sizeSingleChunk = fileSize / noOfProcesses;
+
 		ExecutorService executorService = Executors.newFixedThreadPool(1);
 		List<Future<String>> listOfFutures = new ArrayList<Future<String>>();
 		for (int i = 0; i < 1; i++) {
-			Future<String> future = executorService.submit(new MapperCallable(mapperUDF, inputFilePath));
+			int startOffset = i * sizeSingleChunk;
+			int endOffset = i * sizeSingleChunk + sizeSingleChunk;
+			Future<String> future = executorService
+					.submit(new MapperCallable(mapperUDF, inputFilePath, startOffset, endOffset, noOfProcesses));
 			listOfFutures.add(future);
 		}
 		List<String> intermediateFilePaths = new ArrayList<String>();
@@ -107,14 +126,16 @@ public class MasterLibrary {
 			e.printStackTrace();
 		}
 		executorService.shutdown();
-		String intermediateFilePath=intermediateFilePaths.get(0);
+		String intermediateFilePath = intermediateFilePaths.get(0);
 		return intermediateFilePath;
 	}
 
-	public static String callMapperLibrary(String mapperUDF, String inputFilePath) {
+	public static String callMapperLibrary(String mapperUDF, String inputFilePath, int startOffset, int endOffset,
+			int N) {
 		ProcessBuilder processBuilder = new ProcessBuilder();
 		processBuilder.command("java", "-cp", System.getProperty("user.dir") + "/target/mr-0.0.1-SNAPSHOT.jar",
-				"org.systemsfords.p1.mr.MapperLibrary", mapperUDF, inputFilePath);
+				"org.systemsfords.p1.mr.MapperLibrary", mapperUDF, inputFilePath, String.valueOf(startOffset),
+				String.valueOf(endOffset), String.valueOf(N));
 		processBuilder.redirectErrorStream(true);
 		String intermediateFilePath = null;
 		try {

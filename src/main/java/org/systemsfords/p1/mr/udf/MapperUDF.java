@@ -1,19 +1,25 @@
 package org.systemsfords.p1.mr.udf;
 
+import java.util.ArrayList;
+import java.util.List;
+import javafx.util.Pair;
+
 import org.systemsfords.p1.mr.Mapper;
 
 public class MapperUDF implements Mapper{
-	public String map(String key, String value) {
+	public List<Pair<String, String>> map(String key, String value) {
 		String processedContents = value.toLowerCase();
 		processedContents = processedContents.replaceAll("\\p{Punct}", " ");
 		String[] terms = processedContents.split("\\s+");
-		StringBuilder fileContents = new StringBuilder();
+		List<Pair<String, String>> values = new ArrayList<Pair<String, String>>();
 
 		for (String term : terms) {
-			fileContents.append(term + ", " + 1 + "\n");
+			Pair<String, String> entry = new Pair(term, "1");
+			values.add(entry);
+//			fileContents.append(term + ", " + 1 + "\n");
 		}
 		//System.out.println(fileContents.toString());
-		return fileContents.toString();
+		return values;
 	}
 	
 }

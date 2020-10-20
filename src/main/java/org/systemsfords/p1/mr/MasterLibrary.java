@@ -4,18 +4,57 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class MasterLibrary {
 
 	String intermediateFilePath;
 
-	String outputFilePath;
+	static String outputFilePath;
+
+	public static class MapperCallable implements Callable<String> {
+		String mapperUDF;
+		String inputFilePath;
+
+		public MapperCallable(String mapperUDF, String inputFilePath) {
+			this.mapperUDF = mapperUDF;
+			this.inputFilePath = inputFilePath;
+		}
+
+		@Override
+		public String call() throws Exception {
+			return callMapperLibrary(mapperUDF, inputFilePath);
+		}
+	}
+
+	public static class ReducerCallable implements Callable<String> {
+		String reducerUDF;
+		String intermediateFilePath;
+		String outputFilePath;
+
+		public ReducerCallable(String reducerUDF, String intermediateFilePath, String outputFilePath) {
+			this.reducerUDF = reducerUDF;
+			this.intermediateFilePath = intermediateFilePath;
+			this.outputFilePath = outputFilePath;
+		}
+
+		@Override
+		public String call() throws Exception {
+			callReducerLibrary(reducerUDF, intermediateFilePath, outputFilePath);
+			return null;
+		}
+	}
 
 	public static void main(String[] args) throws IOException {
 
-		//Reading the inputs from the config file
+		// Reading the inputs from the config file
 		String configFile = System.getProperty("user.dir") + "/public/configFile.txt";
 		Map<String, String> configMap = readConfigFile(configFile);
 		String outputFile = System.getProperty("user.dir") + configMap.get("outputFilePath") + "outputFile.txt";
@@ -23,10 +62,53 @@ public class MasterLibrary {
 		String reducerUDF = configMap.get("reducerUDF");
 		String inputFilePath = System.getProperty("user.dir") + configMap.get("inputFile");
 		int noOfProcesses = Integer.parseInt(configMap.get("N"));
+
+		String intermediateFilePath = callMapperLibraryMultipleThreads(mapperUDF, inputFilePath, noOfProcesses);
 		
-		// Calling the mapper process
-		String intermediateFilePath = callMapperLibrary(mapperUDF, inputFilePath);
-		callReducerLibrary(reducerUDF, intermediateFilePath, outputFile);
+		callReducerLibraryMultipleThreads(reducerUDF, intermediateFilePath, outputFile, noOfProcesses);
+		
+		
+		//callReducerLibrary(reducerUDF, intermediateFilePath1, outputFile);
+	}
+
+	private static void callReducerLibraryMultipleThreads(String reducerUDF, String intermediateFilePath, String outputFile, int noOfProcesses) {
+		ExecutorService executorService = Executors.newFixedThreadPool(1);
+		List<Future<String>> listOfFutures = new ArrayList<Future<String>>();
+		for (int i = 0; i < 1; i++) {
+			Future<String> future = executorService.submit(new ReducerCallable(reducerUDF, intermediateFilePath, outputFile));
+			listOfFutures.add(future);
+		}
+		
+		try {
+			for (Future<String> future : listOfFutures) {
+				future.get();
+
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		executorService.shutdown();
+	}
+
+	private static String callMapperLibraryMultipleThreads(String mapperUDF, String inputFilePath, int noOfProcesses) {
+		ExecutorService executorService = Executors.newFixedThreadPool(1);
+		List<Future<String>> listOfFutures = new ArrayList<Future<String>>();
+		for (int i = 0; i < 1; i++) {
+			Future<String> future = executorService.submit(new MapperCallable(mapperUDF, inputFilePath));
+			listOfFutures.add(future);
+		}
+		List<String> intermediateFilePaths = new ArrayList<String>();
+		try {
+			for (Future<String> future : listOfFutures) {
+				intermediateFilePaths.add(future.get());
+
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		executorService.shutdown();
+		String intermediateFilePath=intermediateFilePaths.get(0);
+		return intermediateFilePath;
 	}
 
 	public static String callMapperLibrary(String mapperUDF, String inputFilePath) {

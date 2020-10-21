@@ -4,18 +4,19 @@ package org.systemsfords.p1.mr;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.systemsfords.p1.mr.SocketClient;
+
 
 public class ReducerLibrary {
 
-	public static void main(String args[]) throws ClassNotFoundException, NoSuchMethodException, SecurityException,
-			IllegalAccessException, IllegalArgumentException, InvocationTargetException, InstantiationException {
+	public static void main(String args[]) throws IOException, Exception {
 		String reducerUDF = args[0];
 		String intermediateFilePath = args[1];
 		String outputFilePath = args[2];
@@ -70,15 +71,19 @@ public class ReducerLibrary {
 		return sb.toString();
 	}
 
-	private static void writeToFile(String fileContents, String outputFilePath) {
-
-		try {
+	private static void writeToFile(String fileContents, String outputFilePath) throws IOException, Exception {
+		SocketClient client=new SocketClient();
+	    client.startConnection("127.0.0.1", 6666);
+		
+	    try {
 			PrintWriter writer = new PrintWriter(new FileWriter(outputFilePath, false));
 			writer.println(fileContents);
 			writer.close();
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
+	    client.sendMessage("done");
 		System.out.println("Successfully wrote to output file: "+outputFilePath);
+		client.stopConnection();
 	}
 }

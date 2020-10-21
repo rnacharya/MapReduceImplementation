@@ -75,9 +75,11 @@ public class MasterLibrary {
 		private ServerSocket serverSocket;
 		static ConcurrentMap<String, String> listOfIntermediateFiles = new ConcurrentHashMap();
 		private static int N;
+		private static String mode;
 
-		public ServerCallable(int N) {
+		public ServerCallable(int N, String mode) {
 			this.N = N;
+			this.mode = mode;
 		}
 
 		@Override
@@ -88,7 +90,7 @@ public class MasterLibrary {
 		}
 
 		public void start(int port) throws Exception {
-			System.out.println("Listening to Clients...");
+			System.out.println("Listening to " + mode);
 			serverSocket = new ServerSocket(port);
 			
 			for(int i=0;i<N;i++)
@@ -115,7 +117,9 @@ public class MasterLibrary {
 					
 					//waits for each of the mapper to complete
 					while (!(intermediateFile.equals("done"))){
-						listOfIntermediateFiles.put(intermediateFile, "random");
+						if (mode == "mapper") {
+							listOfIntermediateFiles.put(intermediateFile, "random");
+						}
 						intermediateFile = (String) ois.readObject();
 					}
 					
@@ -152,26 +156,26 @@ public class MasterLibrary {
 		}
 		
 		// Creating socket communication to listen to the mapper outputs
-		Future<Set<String>> potentialListOfIntermediateFiles = createServerProcess(noOfProcesses);
+		Future<Set<String>> potentialListOfIntermediateFiles = createServerProcess(noOfProcesses, "mapper");
 		
 		callMapperLibraryMultipleThreads(mapperUDF, inputFilePath, noOfProcesses);
 		Set<String> listOfIntermediateFiles=potentialListOfIntermediateFiles.get();
 		
 		System.out.println("Final list of intermediate files:"+listOfIntermediateFiles);
-
+		System.out.println();
+		
+		createServerProcess(noOfProcesses, "reducer");
 		callReducerLibraryMultipleThreads(reducerUDF, listOfIntermediateFiles, outputFile, noOfProcesses);
 		System.exit(0);
 	}
 
-	private static Future<Set<String>> createServerProcess(int noOfProcesses) throws InterruptedException, ExecutionException {
+	private static Future<Set<String>> createServerProcess(int noOfProcesses, String mode) throws InterruptedException, ExecutionException {
 		
 		ExecutorService executorService = Executors.newFixedThreadPool(1);
 		
-		Future<Set<String>> future = executorService.submit((new ServerCallable(noOfProcesses)));
+		Future<Set<String>> future = executorService.submit((new ServerCallable(noOfProcesses, mode)));
 		
 		return future;
-
-		
 	}
 
 	private static void callReducerLibraryMultipleThreads(String reducerUDF, Set<String> listOfIntermediateFiles,
@@ -251,7 +255,7 @@ public class MasterLibrary {
 
 	public static void callReducerLibrary(String reducerUDF, String intermediateFilePath, String outputFilePath) {
 		
-		ProcessBuilder processBuilder = new ProcessBuilder();
+		ProcessBuilder processBuilder = new ProcessBuilder().redirectOutput(ProcessBuilder.Redirect.INHERIT);
 		processBuilder.command("java", "-cp", System.getProperty("user.dir") + "/target/mr-0.0.1-SNAPSHOT.jar",
 				"org.systemsfords.p1.mr.ReducerLibrary", reducerUDF, intermediateFilePath, outputFilePath);
 		processBuilder.redirectErrorStream(true);

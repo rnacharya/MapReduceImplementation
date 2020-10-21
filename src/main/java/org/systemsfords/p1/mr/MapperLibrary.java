@@ -4,9 +4,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.RandomAccessFile;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +14,7 @@ import org.systemsfords.p1.mr.SocketClient;
 import javafx.util.Pair;
 
 
+@SuppressWarnings("restriction")
 public class MapperLibrary {
 	
 	final static int NEW_LINE = 10;
@@ -72,7 +71,6 @@ public class MapperLibrary {
 		//Interprocess communication
 		SocketClient client=new SocketClient();
 	    client.startConnection("127.0.0.1", 6666);
-	    String files="";
 		
 	    for (Map.Entry<Integer, StringBuilder> entry: fileContents.entrySet()) {
 			String intermediateFilePath =  System.getProperty("user.dir") + "/public/"+getIntermediateFileName(entry.getKey());
@@ -86,9 +84,9 @@ public class MapperLibrary {
 			}
 			//System.out.println("The intermediate File: "+intermediateFilePath);
 			
-		    String msg1 = client.sendMessage(intermediateFilePath);
+		    client.sendMessage(intermediateFilePath);
 		}
-		String msg2 = client.sendMessage("done");
+		client.sendMessage("done");
 	    client.stopConnection();
 
 	}

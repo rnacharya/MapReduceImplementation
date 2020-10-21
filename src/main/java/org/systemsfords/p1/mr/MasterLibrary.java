@@ -92,21 +92,21 @@ public class MasterLibrary {
 			serverSocket = new ServerSocket(port);
 			
 			for(int i=0;i<N;i++)
-				new EchoClientHandler(serverSocket.accept()).start();
+				new ClientsHandler(serverSocket.accept()).start();
 		}
 
 		public void stop() throws Exception {
 			serverSocket.close();
 		}
 
-		private static class EchoClientHandler extends Thread {
+		private static class ClientsHandler extends Thread {
 			private Socket clientSocket;
 			private PrintWriter out;
 			private BufferedReader in;
 			ObjectInputStream ois;
             ObjectOutputStream oos;
 			
-			public EchoClientHandler(Socket socket) {
+			public ClientsHandler(Socket socket) {
 				this.clientSocket = socket;
 			}
 			

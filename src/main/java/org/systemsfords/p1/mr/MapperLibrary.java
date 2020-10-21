@@ -1,6 +1,7 @@
 package org.systemsfords.p1.mr;
 
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.RandomAccessFile;
 import java.lang.reflect.InvocationTargetException;
@@ -9,15 +10,17 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.systemsfords.p1.mr.SocketClient;
+
 
 import javafx.util.Pair;
+
 
 public class MapperLibrary {
 	
 	final static int NEW_LINE = 10;
 
-	public static void main(String args[]) throws ClassNotFoundException, NoSuchMethodException, SecurityException,
-			IllegalAccessException, IllegalArgumentException, InvocationTargetException, InstantiationException {
+	public static void main(String args[]) throws IOException, Exception {
 		
 		//Reads the mapperUDF class and the files contents to be passed
 		String mapperUDF = args[0];
@@ -32,7 +35,7 @@ public class MapperLibrary {
 		
 		String contentsFile = readFile(fileName, startOffset, endOffset);
 		String[] lines = contentsFile.split("\\n");
-		System.out.println(Arrays.toString(lines));
+		//System.out.println(Arrays.toString(lines));
 		
 		Method mapMethod = mapperUDFClass.getDeclaredMethod("map", String.class, String.class);
 		
@@ -65,7 +68,10 @@ public class MapperLibrary {
 		return "intermediateFile"+num+".txt";
 	}
 
-	private static void writeToIntermediateFile(Map<Integer, StringBuilder> fileContents) {
+	private static void writeToIntermediateFile(Map<Integer, StringBuilder> fileContents) throws IOException, Exception {
+		SocketClient client=new SocketClient();
+	    client.startConnection("127.0.0.1", 6666);
+	    String files="";
 		for (Map.Entry<Integer, StringBuilder> entry: fileContents.entrySet()) {
 			String intermediateFilePath =  System.getProperty("user.dir") + "/public/"+getIntermediateFileName(entry.getKey());
 			
@@ -76,8 +82,16 @@ public class MapperLibrary {
 			} catch (Exception ex) {
 				ex.printStackTrace();
 			}
-			System.out.println(intermediateFilePath);
+			//System.out.println("The intermediate File: "+intermediateFilePath);
+			
+			
+		    String msg1 = client.sendMessage(intermediateFilePath+"\n");
+		    
+		    			
 		}
+		String msg2 = client.sendMessage("done");
+	    client.stopConnection();
+
 	}
 
 	/**
@@ -151,9 +165,9 @@ public class MapperLibrary {
 	            buffLength = buffLength + 50;
 			}
                         
-			System.out.println("-------------------");
-			System.out.println(sb.toString());
-			System.out.println("-------------------");
+//			System.out.println("-------------------");
+//			System.out.println(sb.toString());
+//			System.out.println("-------------------");
 			reader.close();
 		} catch (Exception ex) {
 			ex.printStackTrace();

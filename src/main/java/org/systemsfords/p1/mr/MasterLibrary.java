@@ -3,6 +3,7 @@ package org.systemsfords.p1.mr;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
@@ -12,14 +13,12 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -142,11 +141,24 @@ public class MasterLibrary {
 		// Reading the inputs from the config file
 		String configFile = System.getProperty("user.dir") + "/public/configFile.txt";
 		Map<String, String> configMap = readConfigFile(configFile);
-		String outputFile = System.getProperty("user.dir") + configMap.get("outputFilePath") + "outputFile.txt";
+		String outputFile = System.getProperty("user.dir") + configMap.get("outputFilePath");
 		String mapperUDF = configMap.get("mapperUDF");
 		String reducerUDF = configMap.get("reducerUDF");
 		String inputFilePath = System.getProperty("user.dir") + configMap.get("inputFile");
 		int noOfProcesses = Integer.parseInt(configMap.get("N"));
+		
+		File folder = new File(System.getProperty("user.dir") + "/public/"); 
+		final File[] files = folder.listFiles(new FilenameFilter() {
+		    	public boolean accept(final File dir, final String name) {
+		    		return name.matches("intermediateFile.*\\.txt") || name.matches("outputFile.*\\.txt");
+		    	}
+		});
+		for (final File file : files ) {
+		    if (!file.delete() ) {
+		        System.err.println( "Can't remove " + file.getAbsolutePath() );
+		    }
+		}
+		
 		
 		Future<Set<String>> potentialListOfIntermediateFiles=createServerProcess(noOfProcesses);
 		
@@ -157,7 +169,7 @@ public class MasterLibrary {
 		System.out.println("Final list of intermediate files:"+listOfIntermediateFiles);
 
 		callReducerLibraryMultipleThreads(reducerUDF, listOfIntermediateFiles, outputFile, noOfProcesses);
-
+		System.exit(0);
 	}
 
 	private static Future<Set<String>> createServerProcess(int noOfProcesses) throws InterruptedException, ExecutionException {
@@ -174,10 +186,12 @@ public class MasterLibrary {
 		ExecutorService executorService = Executors.newFixedThreadPool(1);
 		List<Future<String>> listOfFutures = new ArrayList<Future<String>>();
 		
+		int i = 0;
 		for (String intermediateFile: listOfIntermediateFiles) {
 			Future<String> future = executorService
-					.submit(new ReducerCallable(reducerUDF, intermediateFile, outputFile));
+					.submit(new ReducerCallable(reducerUDF, intermediateFile, outputFile+"outputFile"+i+".txt"));
 			listOfFutures.add(future);
+			i++;
 		}
 
 		try {
@@ -191,7 +205,7 @@ public class MasterLibrary {
 		executorService.shutdown();
 	}
 
-	private static String callMapperLibraryMultipleThreads(String mapperUDF, String inputFilePath, int noOfProcesses) {
+	private static void callMapperLibraryMultipleThreads(String mapperUDF, String inputFilePath, int noOfProcesses) {
 
 		File f = new File(inputFilePath);
 		int fileSize = (int) f.length();
@@ -216,8 +230,6 @@ public class MasterLibrary {
 			e.printStackTrace();
 		}
 		executorService.shutdown();
-		String intermediateFilePath = intermediateFilePaths.get(0);
-		return intermediateFilePath;
 	}
 
 	public static String callMapperLibrary(String mapperUDF, String inputFilePath, int startOffset, int endOffset,int N) {

@@ -85,7 +85,7 @@ public class MapperLibrary {
 			//System.out.println("The intermediate File: "+intermediateFilePath);
 			
 			
-		    String msg1 = client.sendMessage(intermediateFilePath+"\n");
+		    String msg1 = client.sendMessage(intermediateFilePath);
 		    
 		    			
 		}
@@ -109,25 +109,20 @@ public class MapperLibrary {
 				foundStartSpace = true;
 			}
 			RandomAccessFile reader = new RandomAccessFile(fileName, "r");
-			int noBytes = endOffset - startOffset;
-            int buffLength = (int) (noBytes);
 			
             if (!foundStartSpace) {
             	reader.seek(startOffset-1);
     			
                 byte[] buffer = new byte[2];
                 int numRead = reader.read(buffer, 0, 2);
-    			
     			if (buffer[0] == NEW_LINE || buffer[1] == NEW_LINE) {
     				foundStartSpace = true;	
     			} 
             }
-			
 			while (!foundStartSpace) {
 				byte[] firstBuffer = new byte[50];
 				reader.seek(startOffset);
 				int n = reader.read(firstBuffer, 0, 50);
-
 				for (int i = 0; i < firstBuffer.length; i++) {
 					if (firstBuffer[i] == NEW_LINE || firstBuffer[i] == 0) {
 						foundStartSpace = true;
@@ -141,20 +136,24 @@ public class MapperLibrary {
 			}
 			
 			reader.seek(startOffset);
+			int noBytes = endOffset - startOffset;
+            int buffLength = (int) (noBytes);
 			byte[] mainBuffer = new byte[buffLength];
 			reader.read(mainBuffer, 0, buffLength);
 			sb = new StringBuilder(new String(mainBuffer));
-
+//			System.out.println(sb.toString());
 			if (mainBuffer[buffLength - 1] == NEW_LINE || mainBuffer[buffLength - 1] == 0) {
 				foundEndSpace = true;
 			}
-			
+			buffLength = startOffset + buffLength;
 			while (!foundEndSpace) {
 				byte[] secondBuffer = new byte[50];
 	            reader.seek(buffLength);
 	            int n = reader.read(secondBuffer, 0, 50);
+//				System.out.println(new String(secondBuffer));
 
 	            for (byte b: secondBuffer) {
+//	            	System.out.println((char)b);
 	            	if (b != NEW_LINE && b != 0) {
 	            		sb.append((char)b);
 	            	} else {

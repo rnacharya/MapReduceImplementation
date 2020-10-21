@@ -28,15 +28,17 @@ public class ReducerLibrary {
 
 		for (String content : contents) {
 			String[] terms = content.split(", ");
-
-			if (reducerMap.containsKey(terms[0])) {
-				List<String> count = reducerMap.get(terms[0]);
-				count.add(terms[1]);
-			} else {
-				List<String> count = new ArrayList<String>();
-				count.add(terms[1]);
-				reducerMap.put(terms[0], count);
+			if (terms.length == 2) {
+				if (reducerMap.containsKey(terms[0])) {
+					List<String> count = reducerMap.get(terms[0]);
+					count.add(terms[1]);
+				} else {
+					List<String> count = new ArrayList<String>();
+					count.add(terms[1]);
+					reducerMap.put(terms[0], count);
+				}
 			}
+			
 		}
 
 		Method reduceMethod = reducerUDFClass.getDeclaredMethod("reduce", String.class, List.class);

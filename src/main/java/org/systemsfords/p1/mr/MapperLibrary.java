@@ -53,7 +53,7 @@ public class MapperLibrary {
 				} else {
 					res = new StringBuilder(entry.getKey() + ", " + entry.getValue() + "\n");
 				}
-				
+				//Storing the contents of each file in a hashmap
 				contentsOfFiles.put(intermediate, res);
 			}
 		}		
@@ -69,10 +69,12 @@ public class MapperLibrary {
 	}
 
 	private static void writeToIntermediateFile(Map<Integer, StringBuilder> fileContents) throws IOException, Exception {
+		//Interprocess communication
 		SocketClient client=new SocketClient();
 	    client.startConnection("127.0.0.1", 6666);
 	    String files="";
-		for (Map.Entry<Integer, StringBuilder> entry: fileContents.entrySet()) {
+		
+	    for (Map.Entry<Integer, StringBuilder> entry: fileContents.entrySet()) {
 			String intermediateFilePath =  System.getProperty("user.dir") + "/public/"+getIntermediateFileName(entry.getKey());
 			
 			try {
@@ -84,10 +86,7 @@ public class MapperLibrary {
 			}
 			//System.out.println("The intermediate File: "+intermediateFilePath);
 			
-			
 		    String msg1 = client.sendMessage(intermediateFilePath);
-		    
-		    			
 		}
 		String msg2 = client.sendMessage("done");
 	    client.stopConnection();
@@ -110,6 +109,7 @@ public class MapperLibrary {
 			}
 			RandomAccessFile reader = new RandomAccessFile(fileName, "r");
 			
+			//Code to read entire rows instead of reading incomplete rows (reading bytes)
             if (!foundStartSpace) {
             	reader.seek(startOffset-1);
     			
@@ -141,7 +141,6 @@ public class MapperLibrary {
 			byte[] mainBuffer = new byte[buffLength];
 			reader.read(mainBuffer, 0, buffLength);
 			sb = new StringBuilder(new String(mainBuffer));
-//			System.out.println(sb.toString());
 			if (mainBuffer[buffLength - 1] == NEW_LINE || mainBuffer[buffLength - 1] == 0) {
 				foundEndSpace = true;
 			}
@@ -150,10 +149,8 @@ public class MapperLibrary {
 				byte[] secondBuffer = new byte[50];
 	            reader.seek(buffLength);
 	            int n = reader.read(secondBuffer, 0, 50);
-//				System.out.println(new String(secondBuffer));
 
 	            for (byte b: secondBuffer) {
-//	            	System.out.println((char)b);
 	            	if (b != NEW_LINE && b != 0) {
 	            		sb.append((char)b);
 	            	} else {
@@ -164,9 +161,6 @@ public class MapperLibrary {
 	            buffLength = buffLength + 50;
 			}
                         
-//			System.out.println("-------------------");
-//			System.out.println(sb.toString());
-//			System.out.println("-------------------");
 			reader.close();
 		} catch (Exception ex) {
 			ex.printStackTrace();

@@ -71,6 +71,7 @@ public class MasterLibrary {
 	}
 
 	public static class ServerCallable implements Callable<Set<String>> {
+		
 		private ServerSocket serverSocket;
 		static ConcurrentMap<String, String> listOfIntermediateFiles = new ConcurrentHashMap();
 		private static int N;
@@ -100,10 +101,7 @@ public class MasterLibrary {
 
 		private static class ClientsHandler extends Thread {
 			private Socket clientSocket;
-			private PrintWriter out;
-			private BufferedReader in;
-			ObjectInputStream ois;
-            ObjectOutputStream oos;
+			private ObjectInputStream ois;
 			
 			public ClientsHandler(Socket socket) {
 				this.clientSocket = socket;
@@ -112,22 +110,15 @@ public class MasterLibrary {
 			public void run() {
 				
 				try {
-//					out = new PrintWriter(clientSocket.getOutputStream(), true);
-//					in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 					ois = new ObjectInputStream(clientSocket.getInputStream());
-					oos=  new ObjectOutputStream(clientSocket.getOutputStream());
-					String intermediateFile = (String) ois.readObject();//in.readLine();
+					String intermediateFile = (String) ois.readObject();
 					
+					//waits for each of the mapper to complete
 					while (!(intermediateFile.equals("done"))){
-						//System.out.println("Internmediate file: "+intermediateFile);
 						listOfIntermediateFiles.put(intermediateFile, "random");
-						//System.out.println("HashMap contents: "+listOfIntermediateFiles.toString());//reading 
 						intermediateFile = (String) ois.readObject();
-						
 					}
-					//System.out.println("Right before close");
-					//in.close();
-					//out.close();
+					
 					clientSocket.close();
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -147,6 +138,7 @@ public class MasterLibrary {
 		String inputFilePath = System.getProperty("user.dir") + configMap.get("inputFile");
 		int noOfProcesses = Integer.parseInt(configMap.get("N"));
 		
+		//Deleting all the intermediate and output files present in the folder
 		File folder = new File(System.getProperty("user.dir") + "/public/"); 
 		final File[] files = folder.listFiles(new FilenameFilter() {
 		    	public boolean accept(final File dir, final String name) {
@@ -159,13 +151,12 @@ public class MasterLibrary {
 		    }
 		}
 		
-		
-		Future<Set<String>> potentialListOfIntermediateFiles=createServerProcess(noOfProcesses);
-		
-		
+		// Creating socket communication to listen to the mapper outputs
+		Future<Set<String>> potentialListOfIntermediateFiles = createServerProcess(noOfProcesses);
 		
 		callMapperLibraryMultipleThreads(mapperUDF, inputFilePath, noOfProcesses);
 		Set<String> listOfIntermediateFiles=potentialListOfIntermediateFiles.get();
+		
 		System.out.println("Final list of intermediate files:"+listOfIntermediateFiles);
 
 		callReducerLibraryMultipleThreads(reducerUDF, listOfIntermediateFiles, outputFile, noOfProcesses);
@@ -173,7 +164,9 @@ public class MasterLibrary {
 	}
 
 	private static Future<Set<String>> createServerProcess(int noOfProcesses) throws InterruptedException, ExecutionException {
+		
 		ExecutorService executorService = Executors.newFixedThreadPool(1);
+		
 		Future<Set<String>> future = executorService.submit((new ServerCallable(noOfProcesses)));
 		
 		return future;
@@ -183,6 +176,8 @@ public class MasterLibrary {
 
 	private static void callReducerLibraryMultipleThreads(String reducerUDF, Set<String> listOfIntermediateFiles,
 			String outputFile, int noOfProcesses) {
+
+		// To run the processes parallely
 		ExecutorService executorService = Executors.newFixedThreadPool(1);
 		List<Future<String>> listOfFutures = new ArrayList<Future<String>>();
 		
@@ -211,6 +206,7 @@ public class MasterLibrary {
 		int fileSize = (int) f.length();
 		int sizeSingleChunk = fileSize / noOfProcesses;
 
+		// To run the processes parallely
 		ExecutorService executorService = Executors.newFixedThreadPool(1);
 		List<Future<String>> listOfFutures = new ArrayList<Future<String>>();
 		for (int i = 0; i < noOfProcesses; i++) {
@@ -224,7 +220,6 @@ public class MasterLibrary {
 		try {
 			for (Future<String> future : listOfFutures) {
 				intermediateFilePaths.add(future.get());
-
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -233,8 +228,8 @@ public class MasterLibrary {
 	}
 
 	public static String callMapperLibrary(String mapperUDF, String inputFilePath, int startOffset, int endOffset,int N) {
+
 		ProcessBuilder processBuilder = new ProcessBuilder().redirectOutput(ProcessBuilder.Redirect.INHERIT);
-		//ProcessBuilder processBuilder = new ProcessBuilder();
 		processBuilder.command("java", "-cp", System.getProperty("user.dir") + "/target/mr-0.0.1-SNAPSHOT.jar",
 				"org.systemsfords.p1.mr.MapperLibrary", mapperUDF, inputFilePath, String.valueOf(startOffset),
 				String.valueOf(endOffset), String.valueOf(N));
@@ -243,15 +238,6 @@ public class MasterLibrary {
 		try {
 
 			Process process = processBuilder.start();
-
-			BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-
-			String line;
-
-//			while ((line = reader.readLine()) != null) {
-//				// System.out.println("Output of process: "+line);
-//				intermediateFilePath = line;
-//			}
 
 			int exitCode = process.waitFor();
 			System.out.println("\nMapper Exited with error code : " + exitCode);
@@ -264,6 +250,7 @@ public class MasterLibrary {
 	}
 
 	public static void callReducerLibrary(String reducerUDF, String intermediateFilePath, String outputFilePath) {
+		
 		ProcessBuilder processBuilder = new ProcessBuilder();
 		processBuilder.command("java", "-cp", System.getProperty("user.dir") + "/target/mr-0.0.1-SNAPSHOT.jar",
 				"org.systemsfords.p1.mr.ReducerLibrary", reducerUDF, intermediateFilePath, outputFilePath);

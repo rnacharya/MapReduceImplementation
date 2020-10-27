@@ -36,19 +36,20 @@ public class MasterLibrary {
 		int startOffset;
 		int endOffset;
 		int N;
+		String application;
 
-		public MapperCallable(String mapperUDF, String inputFilePath, int startOffset, int endOffset, int N) {
+		public MapperCallable(String mapperUDF, String inputFilePath, int startOffset, int endOffset, int N, String application) {
 			this.mapperUDF = mapperUDF;
 			this.inputFilePath = inputFilePath;
 			this.startOffset = startOffset;
 			this.endOffset = endOffset;
 			this.N = N;
+			this.application = application;
 		}
 
 		@Override
 		public String call() throws Exception {
-
-			return callMapperLibrary(mapperUDF, inputFilePath, startOffset, endOffset, N);
+			return callMapperLibrary(mapperUDF, inputFilePath, startOffset, endOffset, N, application);
 		}
 	}
 
@@ -141,12 +142,13 @@ public class MasterLibrary {
 		String reducerUDF = configMap.get("reducerUDF");
 		String inputFilePath = System.getProperty("user.dir") + configMap.get("inputFile");
 		int noOfProcesses = Integer.parseInt(configMap.get("N"));
+		final String application = configMap.get("application");
 		
 		//Deleting all the intermediate and output files present in the folder
 		File folder = new File(System.getProperty("user.dir") + "/public/"); 
 		final File[] files = folder.listFiles(new FilenameFilter() {
 		    	public boolean accept(final File dir, final String name) {
-		    		return name.matches("intermediateFile.*\\.txt") || name.matches("outputFile.*\\.txt");
+		    		return name.matches("intermediateFile-"+application+".*\\.txt") || name.matches("outputFile-"+application+".*\\.txt");
 		    	}
 		});
 		for (final File file : files ) {
@@ -158,14 +160,14 @@ public class MasterLibrary {
 		// Creating socket communication to listen to the mapper outputs
 		Future<Set<String>> potentialListOfIntermediateFiles = createServerProcess(noOfProcesses, "mapper");
 		
-		callMapperLibraryMultipleThreads(mapperUDF, inputFilePath, noOfProcesses);
+		callMapperLibraryMultipleThreads(mapperUDF, inputFilePath, noOfProcesses, application);
 		Set<String> listOfIntermediateFiles=potentialListOfIntermediateFiles.get();
 		
 		System.out.println("Final list of intermediate files:"+listOfIntermediateFiles);
 		System.out.println();
 		
 		createServerProcess(noOfProcesses, "reducer");
-		callReducerLibraryMultipleThreads(reducerUDF, listOfIntermediateFiles, outputFile, noOfProcesses);
+		callReducerLibraryMultipleThreads(reducerUDF, listOfIntermediateFiles, outputFile, noOfProcesses, application);
 		System.exit(0);
 	}
 
@@ -179,7 +181,7 @@ public class MasterLibrary {
 	}
 
 	private static void callReducerLibraryMultipleThreads(String reducerUDF, Set<String> listOfIntermediateFiles,
-			String outputFile, int noOfProcesses) {
+			String outputFile, int noOfProcesses, String application) {
 
 		// To run the processes parallely
 		ExecutorService executorService = Executors.newFixedThreadPool(1);
@@ -188,7 +190,7 @@ public class MasterLibrary {
 		int i = 0;
 		for (String intermediateFile: listOfIntermediateFiles) {
 			Future<String> future = executorService
-					.submit(new ReducerCallable(reducerUDF, intermediateFile, outputFile+"outputFile"+i+".txt"));
+					.submit(new ReducerCallable(reducerUDF, intermediateFile, outputFile+"outputFile-"+application+"-"+i+".txt"));
 			listOfFutures.add(future);
 			i++;
 		}
@@ -204,7 +206,7 @@ public class MasterLibrary {
 		executorService.shutdown();
 	}
 
-	private static void callMapperLibraryMultipleThreads(String mapperUDF, String inputFilePath, int noOfProcesses) {
+	private static void callMapperLibraryMultipleThreads(String mapperUDF, String inputFilePath, int noOfProcesses, String application) {
 
 		File f = new File(inputFilePath);
 		int fileSize = (int) f.length();
@@ -217,7 +219,7 @@ public class MasterLibrary {
 			int startOffset = i * sizeSingleChunk;
 			int endOffset = i * sizeSingleChunk + sizeSingleChunk;
 			Future<String> future = executorService
-					.submit(new MapperCallable(mapperUDF, inputFilePath, startOffset, endOffset, noOfProcesses));
+					.submit(new MapperCallable(mapperUDF, inputFilePath, startOffset, endOffset, noOfProcesses, application));
 			listOfFutures.add(future);
 		}
 		List<String> intermediateFilePaths = new ArrayList<String>();
@@ -231,12 +233,12 @@ public class MasterLibrary {
 		executorService.shutdown();
 	}
 
-	public static String callMapperLibrary(String mapperUDF, String inputFilePath, int startOffset, int endOffset,int N) {
+	public static String callMapperLibrary(String mapperUDF, String inputFilePath, int startOffset, int endOffset,int N, String application) {
 
 		ProcessBuilder processBuilder = new ProcessBuilder().redirectOutput(ProcessBuilder.Redirect.INHERIT);
 		processBuilder.command("java", "-cp", System.getProperty("user.dir") + "/target/mr-0.0.1-SNAPSHOT.jar",
 				"org.systemsfords.p1.mr.MapperLibrary", mapperUDF, inputFilePath, String.valueOf(startOffset),
-				String.valueOf(endOffset), String.valueOf(N));
+				String.valueOf(endOffset), String.valueOf(N), application);
 		processBuilder.redirectErrorStream(true);
 		String intermediateFilePath = null;
 		try {

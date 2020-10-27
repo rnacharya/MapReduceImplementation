@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.RandomAccessFile;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,17 +25,18 @@ public class MapperLibrary {
 		//Reads the mapperUDF class and the files contents to be passed
 		String mapperUDF = args[0];
 		String fileName = args[1];
+		
 		Class<?> mapperUDFClass = Class.forName(mapperUDF);
 
 		int startOffset = Integer.parseInt(args[2]);
 		int endOffset = Integer.parseInt(args[3]);
 		int N = Integer.parseInt(args[4]);
+		String application = args[5];
 
 		Map<Integer, StringBuilder> contentsOfFiles = new HashMap<Integer, StringBuilder>();
 		
 		String contentsFile = readFile(fileName, startOffset, endOffset);
 		String[] lines = contentsFile.split("\\n");
-		//System.out.println(Arrays.toString(lines));
 		
 		Method mapMethod = mapperUDFClass.getDeclaredMethod("map", String.class, String.class);
 		
@@ -42,38 +44,41 @@ public class MapperLibrary {
 			//Calling the map method using reflection
 			List<Pair<String,String>> result = (List<Pair<String, String>>) 
 												mapMethod.invoke(mapperUDFClass.newInstance(), null, line);
-			for (Pair<String,String> entry : result) {
-				int hashCode = (entry.getKey().hashCode() & 0x7fffffff);
-				int intermediate = hashCode % N;
-				StringBuilder res;
-				if (contentsOfFiles.containsKey(intermediate)) {
-					res = contentsOfFiles.get(intermediate);
-					res.append(entry.getKey() + ", " + entry.getValue() + "\n");
-				} else {
-					res = new StringBuilder(entry.getKey() + ", " + entry.getValue() + "\n");
+			if (result.size() > 0) {
+				for (Pair<String,String> entry : result) {
+					int hashCode = (entry.getKey().hashCode() & 0x7fffffff);
+					int intermediate = hashCode % N;
+					StringBuilder res;
+					if (contentsOfFiles.containsKey(intermediate)) {
+						res = contentsOfFiles.get(intermediate);
+						res.append(entry.getKey() + ", " + entry.getValue() + "\n");
+					} else {
+						res = new StringBuilder(entry.getKey() + ", " + entry.getValue() + "\n");
+					}
+					//Storing the contents of each file in a hashmap
+					contentsOfFiles.put(intermediate, res);
 				}
-				//Storing the contents of each file in a hashmap
-				contentsOfFiles.put(intermediate, res);
 			}
+			
 		}		
 
 		//Writing the results to the intermediate file
 		System.out.println("Writing the results of the map function to the intermediate file");
-		writeToIntermediateFile(contentsOfFiles);
+		writeToIntermediateFile(contentsOfFiles, application);
 		
 	}
 	
-	private static String getIntermediateFileName(int num) {
-		return "intermediateFile"+num+".txt";
+	private static String getIntermediateFileName(int num, String application) {
+		return "intermediateFile-"+application+"-"+num+".txt";
 	}
 
-	private static void writeToIntermediateFile(Map<Integer, StringBuilder> fileContents) throws IOException, Exception {
+	private static void writeToIntermediateFile(Map<Integer, StringBuilder> fileContents, String application) throws IOException, Exception {
 		//Interprocess communication
 		SocketClient client=new SocketClient();
 	    client.startConnection("127.0.0.1", 6666);
 		
 	    for (Map.Entry<Integer, StringBuilder> entry: fileContents.entrySet()) {
-			String intermediateFilePath =  System.getProperty("user.dir") + "/public/"+getIntermediateFileName(entry.getKey());
+			String intermediateFilePath =  System.getProperty("user.dir") + "/public/"+getIntermediateFileName(entry.getKey(), application);
 			
 			try {
 				PrintWriter writer = new PrintWriter(new FileWriter(intermediateFilePath, true));
@@ -82,7 +87,7 @@ public class MapperLibrary {
 			} catch (Exception ex) {
 				ex.printStackTrace();
 			}
-			//System.out.println("The intermediate File: "+intermediateFilePath);
+//			System.out.println("The intermediate File: "+intermediateFilePath);
 			
 		    client.sendMessage(intermediateFilePath);
 		}

@@ -48,7 +48,7 @@ public class ReducerLibrary {
 		for (Map.Entry<String, List<String>> entry : reducerMap.entrySet()) {
 			List<String> result = (List<String>) reduceMethod.invoke(reducerUDFClass.newInstance(), entry.getKey(),
 					entry.getValue());
-			finList.append(entry.getKey() + ", " + result.toString() + "\n");
+			finList.append(entry.getKey() + " " + result.toString() + "\n");
 		}
 
 		writeToFile(finList.toString(), outputFilePath);

@@ -7,6 +7,7 @@ import javafx.util.Pair;
 import org.systemsfords.p1.mr.Mapper;
 
 public class MapperUDF implements Mapper{
+	
 	public List<Pair<String, String>> map(String key, String value) {
 		String processedContents = value.toLowerCase();
 		processedContents = processedContents.replaceAll("\\p{Punct}", " ");

@@ -1,0 +1,6 @@
+inputFile=/public/shakespeare-scenes.json
+outputFilePath=/public/
+N=5
+mapperUDF=org.systemsfords.p1.mr.udf.MapperInvertedIndexUDF
+reducerUDF=org.systemsfords.p1.mr.udf.ReducerInvertedIndexUDF
+application=inverted-index

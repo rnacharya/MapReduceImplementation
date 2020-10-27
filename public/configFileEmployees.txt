@@ -1,0 +1,6 @@
+inputFile=/public/employee-salaries.csv
+outputFilePath=/public/
+N=5
+mapperUDF=org.systemsfords.p1.mr.udf.MapperEmployeeSalariesUDF
+reducerUDF=org.systemsfords.p1.mr.udf.ReducerEmployeeSalariesUDF
+application=employee-salaries

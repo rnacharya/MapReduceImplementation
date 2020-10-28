@@ -16,7 +16,9 @@ for i in range(5):
         if len(x.split(" "))==2:
             salary_java[int(x.split(" ")[0])]=str(round(float(x.split(" ")[1][2:-4]),2))
 
+print('-------------------------------------------------------')
 if (salary_python==salary_java):
 	print("The average salaries matches to the spark output")
 else:
 	print("The average salaries does not match to the spark output")
+print('-------------------------------------------------------')

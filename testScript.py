@@ -43,7 +43,9 @@ for i in dic_f2:
             match = False
             # print("Not equal")
             break
+print('-------------------------------------------------------')
 if match:
     print("The output file and the mapreduce output matches")
 else:
     print("Not equal")
+print('-------------------------------------------------------')

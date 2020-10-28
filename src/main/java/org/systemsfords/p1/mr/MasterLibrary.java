@@ -301,6 +301,21 @@ public class MasterLibrary {
 			}
 
 			int exitCode = process.waitFor();
+			System.out.println("Reducer Exited with error code : " + exitCode);
+			process.destroy();
+			if(exitCode!=0) {
+				System.out.println("\nRestarting failed reducer : " );
+				ProcessBuilder processBuilder1 = new ProcessBuilder().redirectOutput(ProcessBuilder.Redirect.INHERIT);
+				processBuilder1.command("java", "-cp", System.getProperty("user.dir") + "/target/mr-0.0.1-SNAPSHOT.jar",
+						"org.systemsfords.p1.mr.ReducerLibrary", reducerUDF, intermediateFilePath, outputFilePath);
+				processBuilder1.redirectErrorStream(true);
+				Process process1 = processBuilder1.start();
+				System.out.println("\nWaiting for previously failed reducer process to complete " );
+				int exitCode1 = process1.waitFor();
+				
+				System.out.println("\nPrevioulsy failed reducer Exited with error code : " + exitCode1);
+				process1.destroy();
+			}
 			System.out.println("\nReducer Exited with error code : " + exitCode);
 		} catch (IOException e) {
 			e.printStackTrace();

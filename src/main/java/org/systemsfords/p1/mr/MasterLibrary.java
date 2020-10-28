@@ -164,6 +164,7 @@ public class MasterLibrary {
 		String inputFilePath = System.getProperty("user.dir") + configMap.get("inputFile");
 		int noOfProcesses = Integer.parseInt(configMap.get("N"));
 		final String application = configMap.get("application");
+		String fault=configMap.get("fault");
 		
 		System.out.println("Running application " + application);
 		
@@ -183,6 +184,11 @@ public class MasterLibrary {
 		// Creating socket communication to listen to the mapper outputs
 		Future<Set<String>> potentialListOfIntermediateFiles = createServerProcess(noOfProcesses, "mapper");
 		
+		if(fault.equals("mapper")) {
+			System.out.println("Simulating fault in "+fault);
+			(new TestFaultTolerance(noOfProcesses, fault)).start();
+		}
+		
 		callMapperLibraryMultipleThreads(mapperUDF, inputFilePath, noOfProcesses, application);
 		Set<String> listOfIntermediateFiles=potentialListOfIntermediateFiles.get();
 		
@@ -190,7 +196,12 @@ public class MasterLibrary {
 		System.out.println();
 		
 		createServerProcess(noOfProcesses, "reducer");
+		if(fault.equals("reducer")) {
+			System.out.println("Simulating fault in "+fault);
+			(new TestFaultTolerance(noOfProcesses, fault)).start();
+		}
 		callReducerLibraryMultipleThreads(reducerUDF, listOfIntermediateFiles, outputFile, noOfProcesses, application);
+		
 		System.exit(0);
 	}
 
@@ -273,7 +284,7 @@ public class MasterLibrary {
 				ProcessBuilder processBuilder1 = new ProcessBuilder().redirectOutput(ProcessBuilder.Redirect.INHERIT);
 				processBuilder1.command("java", "-cp", System.getProperty("user.dir") + "/target/mr-0.0.1-SNAPSHOT.jar",
 						"org.systemsfords.p1.mr.MapperLibrary", mapperUDF, inputFilePath, String.valueOf(startOffset),
-						String.valueOf(endOffset), String.valueOf(N));
+						String.valueOf(endOffset), String.valueOf(N), application);
 				processBuilder1.redirectErrorStream(true);
 				Process process1 = processBuilder1.start();
 				System.out.println("\nWaiting for previously failed mapper process to complete " );
@@ -324,7 +335,7 @@ public class MasterLibrary {
 				System.out.println("\nPrevioulsy failed reducer Exited with error code : " + exitCode1);
 				process1.destroy();
 			}
-			System.out.println("\nReducer Exited with error code : " + exitCode);
+			//System.out.println("\nReducer Exited with error code : " + exitCode);
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (InterruptedException e) {

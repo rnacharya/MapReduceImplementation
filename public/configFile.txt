@@ -4,4 +4,4 @@ N=1
 mapperUDF=org.systemsfords.p1.mr.udf.MapperUDF
 reducerUDF=org.systemsfords.p1.mr.udf.ReducerUDF
 application=word-count
-fault=0
+fault=mapper

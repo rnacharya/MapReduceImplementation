@@ -14,7 +14,6 @@ import org.systemsfords.p1.mr.SocketClient;
 
 import javafx.util.Pair;
 
-
 @SuppressWarnings("restriction")
 public class MapperLibrary {
 	
@@ -26,29 +25,46 @@ public class MapperLibrary {
 		String mapperUDF = args[0];
 		String fileName = args[1];
 		
+		//Fetching the user defined mapper class
 		Class<?> mapperUDFClass = Class.forName(mapperUDF);
 
+		// Reading the offsets of the files which the mapper has to process
 		int startOffset = Integer.parseInt(args[2]);
 		int endOffset = Integer.parseInt(args[3]);
+		
+		//The number of mapper processes
 		int N = Integer.parseInt(args[4]);
+		
 		String application = args[5];
 
+		//The contents to be written to each of the intermediate files
 		Map<Integer, StringBuilder> contentsOfFiles = new HashMap<Integer, StringBuilder>();
 		
+		//Reads the partition which is assigned to this particular mapper instance
 		String contentsFile = readFile(fileName, startOffset, endOffset);
+		
+		//Splits the contents read by new line
 		String[] lines = contentsFile.split("\\n");
 		
+		//Declaration for the user defined map method
 		Method mapMethod = mapperUDFClass.getDeclaredMethod("map", String.class, String.class);
 		
+		//Processing the partition of the file line by line or by each row
 		for (String line : lines) {
 			//Calling the map method using reflection
 			List<Pair<String,String>> result = (List<Pair<String, String>>) 
 												mapMethod.invoke(mapperUDFClass.newInstance(), null, line);
 			if (result.size() > 0) {
+				
+				// Key-Value returned by the UDF
 				for (Pair<String,String> entry : result) {
+					//Computing the hashcode for the key
 					int hashCode = (entry.getKey().hashCode() & 0x7fffffff);
+					//Hashcode modulus N as we have N reducers only
 					int intermediate = hashCode % N;
 					StringBuilder res;
+					
+					//Appending the contents to a stringbuilder stored in a hashmap against a particular intermediate file
 					if (contentsOfFiles.containsKey(intermediate)) {
 						res = contentsOfFiles.get(intermediate);
 						res.append(entry.getKey() + ", " + entry.getValue() + "\n");
@@ -68,15 +84,29 @@ public class MapperLibrary {
 		
 	}
 	
+	/**
+	 * Function to fetch the intermediate file names which consist of the application and the mapper instance number
+	 * @param num
+	 * @param application
+	 * @return
+	 */
 	private static String getIntermediateFileName(int num, String application) {
 		return "intermediateFile-"+application+"-"+num+".txt";
 	}
 
+	/**
+	 * Writing the mapper output to the intermediate files
+	 * @param fileContents
+	 * @param application
+	 * @throws IOException
+	 * @throws Exception
+	 */
 	private static void writeToIntermediateFile(Map<Integer, StringBuilder> fileContents, String application) throws IOException, Exception {
 		//Interprocess communication
 		SocketClient client=new SocketClient();
 	    client.startConnection("127.0.0.1", 6666);
 		
+	    //Loop through the intermediate file contents to be written
 	    for (Map.Entry<Integer, StringBuilder> entry: fileContents.entrySet()) {
 			String intermediateFilePath =  System.getProperty("user.dir") + "/public/"+getIntermediateFileName(entry.getKey(), application);
 			
@@ -89,14 +119,17 @@ public class MapperLibrary {
 			}
 //			System.out.println("The intermediate File: "+intermediateFilePath);
 			
+			//Sending the intermediate file name to the master
 		    client.sendMessage(intermediateFilePath);
 		}
+	    //Notifying the master that this mapper has finished executing
 		client.sendMessage("done");
 	    client.stopConnection();
 
 	}
 
 	/**
+	 * Function for reading the partition of the file
 	 * @param fileName
 	 * @param startOffset
 	 * @param endOffset
@@ -110,6 +143,7 @@ public class MapperLibrary {
 			if (startOffset == 0) {
 				foundStartSpace = true;
 			}
+			//Reading the partition byte by byte
 			RandomAccessFile reader = new RandomAccessFile(fileName, "r");
 			
 			//Code to read entire rows instead of reading incomplete rows (reading bytes)
@@ -122,6 +156,7 @@ public class MapperLibrary {
     				foundStartSpace = true;	
     			} 
             }
+            //Until we are in the start of a new line, we keep adding the offset and move forward
 			while (!foundStartSpace) {
 				byte[] firstBuffer = new byte[50];
 				reader.seek(startOffset);
@@ -138,6 +173,7 @@ public class MapperLibrary {
 				}
 			}
 			
+			//Read the contents from the start offset to the end offset
 			reader.seek(startOffset);
 			int noBytes = endOffset - startOffset;
             int buffLength = (int) (noBytes);
@@ -148,6 +184,8 @@ public class MapperLibrary {
 				foundEndSpace = true;
 			}
 			buffLength = startOffset + buffLength;
+			
+			//To read the contents until the end of the row or till we encounter a new line
 			while (!foundEndSpace) {
 				byte[] secondBuffer = new byte[50];
 	            reader.seek(buffLength);

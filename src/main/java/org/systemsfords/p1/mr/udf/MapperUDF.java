@@ -8,6 +8,10 @@ import org.systemsfords.p1.mr.Mapper;
 
 public class MapperUDF implements Mapper{
 	
+	/**
+	 * Process each line by removing punctuations and split by space.
+	 * For each word, output the word and 1 as its occurence
+	 */
 	public List<Pair<String, String>> map(String key, String value) {
 		String processedContents = value.toLowerCase();
 		processedContents = processedContents.replaceAll("\\p{Punct}", " ");
@@ -17,9 +21,7 @@ public class MapperUDF implements Mapper{
 		for (String term : terms) {
 			Pair<String, String> entry = new Pair(term, "1");
 			values.add(entry);
-//			fileContents.append(term + ", " + 1 + "\n");
 		}
-		//System.out.println(fileContents.toString());
 		return values;
 	}
 	

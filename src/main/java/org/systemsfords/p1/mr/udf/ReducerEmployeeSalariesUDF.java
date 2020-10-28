@@ -5,6 +5,12 @@ import java.util.List;
 
 public class ReducerEmployeeSalariesUDF {
 
+	/**
+	 * Computes the average salary of employees for each of the distinct ages found in the input
+	 * @param key
+	 * @param values
+	 * @return
+	 */
 	public List<String> reduce(String key, List<String> values) {
 		double sum = 0;
 		for (String value : values) {

@@ -8,6 +8,12 @@ import javafx.util.Pair;
 
 public class MapperEmployeeSalariesUDF {
 
+	/**
+	 * Read each line of the csv, fetch the age and the salary of the employee and return that as the output
+	 * @param key
+	 * @param value
+	 * @return
+	 */
 	public List<Pair<String, String>> map(String key, String value) {
 		List<Pair<String, String>> values = new ArrayList<Pair<String, String>>();
 		try {
@@ -19,7 +25,7 @@ public class MapperEmployeeSalariesUDF {
 				values.add(entry);
 			}
 		} catch (NumberFormatException e) {
-//			e.printStackTrace();
+
 		}
 		return values;
 	}

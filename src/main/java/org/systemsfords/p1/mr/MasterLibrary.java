@@ -147,10 +147,16 @@ public class MasterLibrary {
 		}
 	}
 
-	public static void main(String[] args) throws IOException, InterruptedException, ExecutionException {
+	public static void main(String[] args) throws Exception {
 
+		if (args.length == 0) {
+			throw new Exception("Please specify the config file");
+		}
+
+		String configFileName = args[0];
+		
 		// Reading the inputs from the config file
-		String configFile = System.getProperty("user.dir") + "/public/configFile.txt";
+		String configFile = System.getProperty("user.dir") + "/public/" + configFileName;
 		Map<String, String> configMap = readConfigFile(configFile);
 		String outputFile = System.getProperty("user.dir") + configMap.get("outputFilePath");
 		String mapperUDF = configMap.get("mapperUDF");
@@ -158,6 +164,8 @@ public class MasterLibrary {
 		String inputFilePath = System.getProperty("user.dir") + configMap.get("inputFile");
 		int noOfProcesses = Integer.parseInt(configMap.get("N"));
 		final String application = configMap.get("application");
+		
+		System.out.println("Running application " + application);
 		
 		//Deleting all the intermediate and output files present in the folder
 		File folder = new File(System.getProperty("user.dir") + "/public/"); 

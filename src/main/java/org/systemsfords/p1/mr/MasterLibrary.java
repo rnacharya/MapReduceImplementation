@@ -23,6 +23,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public class MasterLibrary {
 
@@ -47,7 +48,6 @@ public class MasterLibrary {
 			this.application = application;
 		}
 
-		@Override
 		public String call() throws Exception {
 			return callMapperLibrary(mapperUDF, inputFilePath, startOffset, endOffset, N, application);
 		}
@@ -64,7 +64,6 @@ public class MasterLibrary {
 			this.outputFilePath = outputFilePath;
 		}
 
-		@Override
 		public String call() throws Exception {
 			callReducerLibrary(reducerUDF, intermediateFilePath, outputFilePath);
 			return null;
@@ -77,13 +76,13 @@ public class MasterLibrary {
 		static ConcurrentMap<String, String> listOfIntermediateFiles = new ConcurrentHashMap();
 		private static int N;
 		private static String mode;
+		private ConcurrentMap<Integer, Integer> completedProcessCounts= new ConcurrentHashMap<Integer, Integer>();
 
 		public ServerCallable(int N, String mode) {
 			this.N = N;
 			this.mode = mode;
 		}
 
-		@Override
 		public Set<String> call() throws Exception {
 			start(6666);
 			stop();
@@ -94,8 +93,17 @@ public class MasterLibrary {
 			System.out.println("Listening to " + mode);
 			serverSocket = new ServerSocket(port);
 			
-			for(int i=0;i<N;i++)
-				new ClientsHandler(serverSocket.accept()).start();
+			for(int i=0;i<N;i++) {
+				//System.out.println("Server callable: "+completedProcessCounts.size());
+				new ClientsHandler(serverSocket.accept(), completedProcessCounts).start();
+				
+			}
+			Thread.sleep(1000);
+			//System.out.println("Completed process counts as per main thread "+completedProcessCounts.size());
+			if(completedProcessCounts.size()<N) {
+				System.out.println("Server callable: Recreating a new connection");
+				new ClientsHandler(serverSocket.accept(), completedProcessCounts).start();
+			}
 		}
 
 		public void stop() throws Exception {
@@ -105,9 +113,11 @@ public class MasterLibrary {
 		private static class ClientsHandler extends Thread {
 			private Socket clientSocket;
 			private ObjectInputStream ois;
+			ConcurrentMap<Integer, Integer> completedProcessCounts;
 			
-			public ClientsHandler(Socket socket) {
+			public ClientsHandler(Socket socket, ConcurrentMap<Integer, Integer> completedProcessCounts) {
 				this.clientSocket = socket;
+				this.completedProcessCounts=completedProcessCounts;
 			}
 			
 			public void run() {
@@ -123,11 +133,16 @@ public class MasterLibrary {
 						}
 						intermediateFile = (String) ois.readObject();
 					}
-					
+					completedProcessCounts.put(clientSocket.hashCode(), 1);
 					clientSocket.close();
+					//System.out.println("Server callable: Process complete "+clientSocket.hashCode());
+					//System.out.println("Completed Process Counts: "+completedProcessCounts.size());
 				} catch (Exception e) {
 					e.printStackTrace();
+					System.out.println("Exception thrown in Client Handler");
+					
 				}
+				return;
 			}
 		}
 	}
@@ -184,7 +199,7 @@ public class MasterLibrary {
 			String outputFile, int noOfProcesses, String application) {
 
 		// To run the processes parallely
-		ExecutorService executorService = Executors.newFixedThreadPool(1);
+		ExecutorService executorService = Executors.newFixedThreadPool(noOfProcesses);
 		List<Future<String>> listOfFutures = new ArrayList<Future<String>>();
 		
 		int i = 0;
@@ -206,31 +221,28 @@ public class MasterLibrary {
 		executorService.shutdown();
 	}
 
-	private static void callMapperLibraryMultipleThreads(String mapperUDF, String inputFilePath, int noOfProcesses, String application) {
+
+	private static void callMapperLibraryMultipleThreads(String mapperUDF, String inputFilePath, int noOfProcesses, String application) throws InterruptedException {
 
 		File f = new File(inputFilePath);
 		int fileSize = (int) f.length();
 		int sizeSingleChunk = fileSize / noOfProcesses;
 
 		// To run the processes parallely
-		ExecutorService executorService = Executors.newFixedThreadPool(1);
+		ExecutorService executorService = Executors.newFixedThreadPool(noOfProcesses);
 		List<Future<String>> listOfFutures = new ArrayList<Future<String>>();
+		List<Callable<String>> callables=new ArrayList<Callable<String>>();
 		for (int i = 0; i < noOfProcesses; i++) {
 			int startOffset = i * sizeSingleChunk;
 			int endOffset = i * sizeSingleChunk + sizeSingleChunk;
-			Future<String> future = executorService
-					.submit(new MapperCallable(mapperUDF, inputFilePath, startOffset, endOffset, noOfProcesses, application));
-			listOfFutures.add(future);
+
+			Callable<String> callable=new MapperCallable(mapperUDF, inputFilePath, startOffset, endOffset, noOfProcesses, application);
+			callables.add(callable);
 		}
 		List<String> intermediateFilePaths = new ArrayList<String>();
-		try {
-			for (Future<String> future : listOfFutures) {
-				intermediateFilePaths.add(future.get());
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		listOfFutures=executorService.invokeAll(callables);
 		executorService.shutdown();
+		executorService.awaitTermination(5, TimeUnit.MINUTES);
 	}
 
 	public static String callMapperLibrary(String mapperUDF, String inputFilePath, int startOffset, int endOffset,int N, String application) {
@@ -247,6 +259,22 @@ public class MasterLibrary {
 
 			int exitCode = process.waitFor();
 			System.out.println("\nMapper Exited with error code : " + exitCode);
+			process.destroy();
+			if(exitCode!=0) {
+				System.out.println("\nRestarting failed mapper : " );
+				ProcessBuilder processBuilder1 = new ProcessBuilder().redirectOutput(ProcessBuilder.Redirect.INHERIT);
+				processBuilder1.command("java", "-cp", System.getProperty("user.dir") + "/target/mr-0.0.1-SNAPSHOT.jar",
+						"org.systemsfords.p1.mr.MapperLibrary", mapperUDF, inputFilePath, String.valueOf(startOffset),
+						String.valueOf(endOffset), String.valueOf(N));
+				processBuilder1.redirectErrorStream(true);
+				Process process1 = processBuilder1.start();
+				System.out.println("\nWaiting for previously failed mapper process to complete " );
+				int exitCode1 = process1.waitFor();
+				
+				System.out.println("\nPrevioulsy failed Mapper Exited with error code : " + exitCode1);
+				process1.destroy();
+			}
+			
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (InterruptedException e) {

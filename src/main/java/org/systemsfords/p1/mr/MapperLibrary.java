@@ -12,7 +12,7 @@ import java.util.Map;
 import org.systemsfords.p1.mr.SocketClient;
 
 
-import javafx.util.Pair;
+
 
 @SuppressWarnings("restriction")
 public class MapperLibrary {

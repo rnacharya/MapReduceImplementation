@@ -3,7 +3,9 @@ package org.systemsfords.p1.mr.udf;
 import java.util.ArrayList;
 import java.util.List;
 
-import javafx.util.Pair;
+import org.systemsfords.p1.mr.Pair;
+
+
 
 public class MapperInvertedIndexUDF {
 	

@@ -19,6 +19,10 @@
   <target name="help">
     <echo message="Please run: $ant -projecthelp"/>
   </target>
+	<target name="compile">
+	  <javac target="9" srcdir="src/main/java"/>
+		<javac source="9" srcdir="src/main/java"/>
+	</target>
 	<!-- <target name="compile">
 		<javac compiler="classic" taskname="javac" includeAntRuntime="no" fork="true" deprecation="true" target="1.8" source="1.8" srcdir="src"  />
 	</target> -->

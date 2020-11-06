@@ -2,7 +2,7 @@ package org.systemsfords.p1.mr;
 
 import java.util.List;
 
-import javafx.util.Pair;
+
 
 public interface Mapper {
 	
